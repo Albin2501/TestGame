@@ -1,0 +1,69 @@
+[gd_scene load_steps=7 format=3 uid="uid://db8tf028u1udp"]
+
+[ext_resource type="Script" uid="uid://s528h3xf83kn" path="res://scene/player.cs" id="1_hjaqi"]
+[ext_resource type="Texture2D" uid="uid://ded0oc2glo1gi" path="res://sprite/player/player_sheet.png" id="1_xo3ru"]
+[ext_resource type="Texture2D" uid="uid://ccfams7r3pfp4" path="res://sprite/apple/apple.png" id="3_fvtld"]
+
+[sub_resource type="Animation" id="Animation_hjaqi"]
+length = 0.001
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("Sprite2D:frame")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 1,
+"values": [1]
+}
+
+[sub_resource type="Animation" id="Animation_xo3ru"]
+resource_name = "idle"
+length = 1.00001
+loop_mode = 1
+step = 0.1
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("Sprite2D:frame")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
+"update": 1,
+"values": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+}
+
+[sub_resource type="AnimationLibrary" id="AnimationLibrary_fvtld"]
+_data = {
+&"RESET": SubResource("Animation_hjaqi"),
+&"idle": SubResource("Animation_xo3ru")
+}
+
+[node name="Player" type="Node2D"]
+
+[node name="Camera2D" type="Camera2D" parent="."]
+zoom = Vector2(10, 10)
+
+[node name="Player" type="CharacterBody2D" parent="."]
+script = ExtResource("1_hjaqi")
+
+[node name="Sprite2D" type="Sprite2D" parent="Player"]
+texture = ExtResource("1_xo3ru")
+hframes = 10
+frame = 1
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="Player"]
+libraries = {
+&"": SubResource("AnimationLibrary_fvtld")
+}
+
+[node name="Apple" type="Node2D" parent="."]
+
+[node name="Sprite2D" type="Sprite2D" parent="Apple"]
+position = Vector2(35, 0)
+scale = Vector2(0.5, 0.5)
+texture = ExtResource("3_fvtld")
