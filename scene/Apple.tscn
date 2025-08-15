@@ -1,0 +1,69 @@
+[gd_scene load_steps=9 format=3 uid="uid://7kvoyebcknwl"]
+
+[ext_resource type="Script" uid="uid://boitlk6av5w0h" path="res://scripts/Apple.cs" id="1_g83ww"]
+[ext_resource type="Texture2D" uid="uid://ccfams7r3pfp4" path="res://sprite/apple/Apple.png" id="1_jyvw0"]
+[ext_resource type="Texture2D" uid="uid://bous7001n1ana" path="res://sprite/apple/Apple_Pick_Up_Sheet.png" id="3_it4ea"]
+[ext_resource type="AudioStream" uid="uid://c55s2rthj57ae" path="res://audio/Pick_Up.wav" id="4_y8gpn"]
+
+[sub_resource type="Animation" id="Animation_nubvq"]
+resource_name = "pick_up"
+length = 0.7695
+step = 0.1
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("PickUpSprite:frame")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1, 1),
+"update": 1,
+"values": [0, 1, 2, 3, 4, 5, 6, 7]
+}
+
+[sub_resource type="Animation" id="Animation_r0wsa"]
+length = 0.001
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("PickUpSprite:frame")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 1,
+"values": [0]
+}
+
+[sub_resource type="AnimationLibrary" id="AnimationLibrary_408q2"]
+_data = {
+&"RESET": SubResource("Animation_r0wsa"),
+&"pick_up": SubResource("Animation_nubvq")
+}
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_g83ww"]
+radius = 14.0
+
+[node name="Apple" type="Area2D"]
+scale = Vector2(0.5, 0.5)
+script = ExtResource("1_g83ww")
+
+[node name="Sprite" type="Sprite2D" parent="."]
+texture = ExtResource("1_jyvw0")
+
+[node name="PickUpSprite" type="Sprite2D" parent="."]
+texture = ExtResource("3_it4ea")
+hframes = 8
+
+[node name="Animation" type="AnimationPlayer" parent="."]
+libraries = {
+&"": SubResource("AnimationLibrary_408q2")
+}
+
+[node name="PickUp" type="AudioStreamPlayer2D" parent="."]
+stream = ExtResource("4_y8gpn")
+
+[node name="Shape" type="CollisionShape2D" parent="."]
+shape = SubResource("CircleShape2D_g83ww")

@@ -1,37 +1,24 @@
-[gd_scene load_steps=14 format=3 uid="uid://cu0pj8xx1eebu"]
+[gd_scene load_steps=18 format=3 uid="uid://cu0pj8xx1eebu"]
 
 [ext_resource type="Script" uid="uid://s528h3xf83kn" path="res://scripts/Player.cs" id="1_y30ri"]
-[ext_resource type="Texture2D" uid="uid://ded0oc2glo1gi" path="res://sprite/player/PlayerIdleSheet.png" id="2_waelg"]
+[ext_resource type="Texture2D" uid="uid://l7ghd5e3d43k" path="res://sprite/player/Player_Idle_Sheet.png" id="2_ea7gk"]
+[ext_resource type="Texture2D" uid="uid://du0jamirdpf6w" path="res://sprite/player/Player_Step_Sheet.png" id="3_kqvfm"]
 [ext_resource type="Script" uid="uid://efufhr1eyjwi" path="res://scripts/Camera.cs" id="3_waelg"]
+[ext_resource type="Texture2D" uid="uid://cuyprchym82ud" path="res://sprite/player/Player_Fall_Sheet.png" id="4_63jwq"]
 [ext_resource type="AudioStream" uid="uid://3i3x33axcijh" path="res://audio/Zoom_In.wav" id="4_ea7gk"]
 [ext_resource type="AudioStream" uid="uid://d3a013qfht884" path="res://audio/Step.wav" id="4_waelg"]
 [ext_resource type="AudioStream" uid="uid://70eyh2qsnkya" path="res://audio/Jump.wav" id="5_82gks"]
 [ext_resource type="AudioStream" uid="uid://b3ajm524ni370" path="res://audio/Zoom_Out.wav" id="5_kqvfm"]
 
-[sub_resource type="Animation" id="Animation_hjaqi"]
-length = 0.001
-tracks/0/type = "value"
-tracks/0/imported = false
-tracks/0/enabled = true
-tracks/0/path = NodePath("Sprite:frame")
-tracks/0/interp = 1
-tracks/0/loop_wrap = true
-tracks/0/keys = {
-"times": PackedFloat32Array(0),
-"transitions": PackedFloat32Array(1),
-"update": 1,
-"values": [1]
-}
-
 [sub_resource type="Animation" id="Animation_xo3ru"]
 resource_name = "idle"
-length = 1.00001
+length = 0.947
 loop_mode = 1
 step = 0.1
 tracks/0/type = "value"
 tracks/0/imported = false
 tracks/0/enabled = true
-tracks/0/path = NodePath("Sprite:frame")
+tracks/0/path = NodePath("IdleSprite:frame")
 tracks/0/interp = 1
 tracks/0/loop_wrap = true
 tracks/0/keys = {
@@ -41,10 +28,63 @@ tracks/0/keys = {
 "values": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 }
 
+[sub_resource type="Animation" id="Animation_63jwq"]
+resource_name = "step"
+length = 0.5402
+loop_mode = 1
+step = 0.1
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("StepSprite:frame")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.1, 0.2, 0.3, 0.4, 0.5),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1),
+"update": 1,
+"values": [0, 1, 2, 3, 4, 5]
+}
+
+[sub_resource type="Animation" id="Animation_r6ll3"]
+resource_name = "fall"
+length = 0.200007
+loop_mode = 2
+step = 0.0666667
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("FallSprite:frame")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.0666667, 0.133333),
+"transitions": PackedFloat32Array(1, 1, 1),
+"update": 1,
+"values": [0, 1, 2]
+}
+
+[sub_resource type="Animation" id="Animation_oqto2"]
+length = 0.001
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("FallSprite:frame")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 1,
+"values": [0]
+}
+
 [sub_resource type="AnimationLibrary" id="AnimationLibrary_fvtld"]
 _data = {
-&"RESET": SubResource("Animation_hjaqi"),
-&"idle": SubResource("Animation_xo3ru")
+&"RESET": SubResource("Animation_oqto2"),
+&"fall": SubResource("Animation_r6ll3"),
+&"idle": SubResource("Animation_xo3ru"),
+&"step": SubResource("Animation_63jwq")
 }
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_ripxc"]
@@ -59,10 +99,20 @@ size = Vector2(20, 7)
 [node name="Player" type="CharacterBody2D"]
 script = ExtResource("1_y30ri")
 
-[node name="Sprite" type="Sprite2D" parent="."]
-texture = ExtResource("2_waelg")
+[node name="IdleSprite" type="Sprite2D" parent="."]
+visible = false
+texture = ExtResource("2_ea7gk")
 hframes = 10
-frame = 1
+
+[node name="StepSprite" type="Sprite2D" parent="."]
+visible = false
+texture = ExtResource("3_kqvfm")
+hframes = 6
+frame = 5
+
+[node name="FallSprite" type="Sprite2D" parent="."]
+texture = ExtResource("4_63jwq")
+hframes = 3
 
 [node name="Animation" type="AnimationPlayer" parent="."]
 libraries = {
