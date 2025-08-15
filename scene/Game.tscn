@@ -1,0 +1,105 @@
+[gd_scene load_steps=13 format=3 uid="uid://8jkqjypf8i4f"]
+
+[ext_resource type="Script" uid="uid://s528h3xf83kn" path="res://scripts/Player.cs" id="1_t585p"]
+[ext_resource type="Texture2D" uid="uid://ded0oc2glo1gi" path="res://sprite/player/PlayerIdleSheet.png" id="2_vg7sv"]
+[ext_resource type="Script" uid="uid://efufhr1eyjwi" path="res://scripts/Camera.cs" id="3_1qeit"]
+[ext_resource type="Texture2D" uid="uid://ccfams7r3pfp4" path="res://sprite/apple/Apple.png" id="3_ripxc"]
+[ext_resource type="PackedScene" uid="uid://cf4b1it2dg60p" path="res://scene/platform.tscn" id="4_vg7sv"]
+[ext_resource type="PackedScene" uid="uid://cf4b1it2dg60p" path="res://scene/Platform.tscn" id="5_ripxc"]
+
+[sub_resource type="Animation" id="Animation_hjaqi"]
+length = 0.001
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("Sprite2D:frame")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 1,
+"values": [1]
+}
+
+[sub_resource type="Animation" id="Animation_xo3ru"]
+resource_name = "idle"
+length = 1.00001
+loop_mode = 1
+step = 0.1
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("Sprite2D:frame")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
+"update": 1,
+"values": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+}
+
+[sub_resource type="AnimationLibrary" id="AnimationLibrary_fvtld"]
+_data = {
+&"RESET": SubResource("Animation_hjaqi"),
+&"idle": SubResource("Animation_xo3ru")
+}
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_ripxc"]
+size = Vector2(10, 11.5)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_1qeit"]
+size = Vector2(19, 39)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_0qanc"]
+size = Vector2(20, 7)
+
+[node name="Game" type="Node2D"]
+
+[node name="Player" type="CharacterBody2D" parent="."]
+script = ExtResource("1_t585p")
+
+[node name="Sprite2D" type="Sprite2D" parent="Player"]
+texture = ExtResource("2_vg7sv")
+hframes = 10
+frame = 1
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="Player"]
+libraries = {
+&"": SubResource("AnimationLibrary_fvtld")
+}
+
+[node name="Camera2D" type="Camera2D" parent="Player"]
+zoom = Vector2(2.25, 2.25)
+script = ExtResource("3_1qeit")
+
+[node name="Head" type="CollisionShape2D" parent="Player"]
+position = Vector2(0, -23)
+shape = SubResource("RectangleShape2D_ripxc")
+
+[node name="Body" type="CollisionShape2D" parent="Player"]
+position = Vector2(0, 4)
+shape = SubResource("RectangleShape2D_1qeit")
+
+[node name="Feet" type="CollisionShape2D" parent="Player"]
+position = Vector2(1, 28)
+shape = SubResource("RectangleShape2D_0qanc")
+
+[node name="Apple" type="Node2D" parent="."]
+
+[node name="Sprite2D" type="Sprite2D" parent="Apple"]
+position = Vector2(35, 0)
+scale = Vector2(0.5, 0.5)
+texture = ExtResource("3_ripxc")
+
+[node name="Level" type="Node2D" parent="."]
+
+[node name="Platform" parent="Level" instance=ExtResource("4_vg7sv")]
+position = Vector2(5, 0)
+
+[node name="Platform2" parent="Level" instance=ExtResource("5_ripxc")]
+position = Vector2(240, -65)
+
+[node name="Platform3" parent="Level" instance=ExtResource("5_ripxc")]
+position = Vector2(-222, 46)
