@@ -11,28 +11,53 @@ public partial class Player : CharacterBody2D
 	private float JumpForce = -150;
 
 	// Information of children
-	private AnimationPlayer animation;
-	private Sprite2D sprite;
-	private Camera2D camera;
+	private AnimationPlayer IdleAnimation;
+	private Sprite2D Sprite;
+	private Camera2D Camera;
+	private AudioStreamPlayer2D StepAudio;
+	private AudioStreamPlayer2D JumpAudio;
 
 	// Logic
+	private Boolean ActiveJump = false;
 	private Boolean DoubleJump = true;
 	private float CoyoteTime = 0.1f;
 	private float CoyoteCounter = 0f;
 
 	public override void _Ready()
 	{
-		animation = GetNode<AnimationPlayer>("AnimationPlayer");
-		sprite = GetNode<Sprite2D>("Sprite2D");
-		camera = GetNode<Camera2D>("Camera2D");
+		IdleAnimation = GetNode<AnimationPlayer>("Animation");
+		Sprite = GetNode<Sprite2D>("Sprite");
+		Camera = GetNode<Camera2D>("Camera");
+		StepAudio = GetNode<AudioStreamPlayer2D>("Step");
+		JumpAudio = GetNode<AudioStreamPlayer2D>("Jump");
 
-		animation.Play("idle");
-		camera.MakeCurrent();
+		IdleAnimation.Play("idle");
+		Camera.MakeCurrent();
 	}
 
 	public override void _Process(double delta)
 	{
 		HandleInput((float)delta);
+		HandleAudio();
+	}
+
+	private void HandleAudio()
+	{
+		// Running Audio
+		if (Velocity.X != 0 && IsOnFloor())
+		{
+			if (!StepAudio.Playing)
+				StepAudio.Play();
+		}
+		else
+			StepAudio.Stop();
+
+		// Jumping Audio
+		if (ActiveJump)
+		{
+			JumpAudio.Play();
+			ActiveJump = false;
+		}
 	}
 
 	public override void _PhysicsProcess(double delta)
@@ -74,12 +99,12 @@ public partial class Player : CharacterBody2D
 	{
 		if (Input.IsActionPressed("right"))
 		{
-			sprite.FlipH = false;
+			Sprite.FlipH = false;
 			CurrentVelocity.X = Speed;
 		}
 		else if (Input.IsActionPressed("left"))
 		{
-			sprite.FlipH = true;
+			Sprite.FlipH = true;
 			CurrentVelocity.X = -Speed;
 		}
 		else
@@ -92,7 +117,8 @@ public partial class Player : CharacterBody2D
 				CoyoteCounter = 0f;
 			else if (DoubleJump)
 				DoubleJump = false;
-
+			
+			ActiveJump = true;
 			CurrentVelocity.Y = JumpForce;
 		}
 
