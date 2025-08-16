@@ -1,210 +1,252 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Godot;
+
+// TODO: Jumping from Ground Bug
+// TODO: Dash Bug
 
 public partial class Player : CharacterBody2D
 {
-	// Physics
-	private Vector2 CurrentVelocity = new(0, 0);
-	private float Speed = 100;
-	private float Gravity = 500;
-	private float FallForce = 2000;
-	private float JumpForce = -250;
-	private float DashForce = 500;
+	// Constants
+	private const float _StepSpeed = 100;
+	private const float _GravitySpeed = 500;
+	private const float _FallSpeed = 2000;
+	private const float _JumpSpeed = -250;
+	private const float _DashSpeed = 500;
+	private const float _DashTime = 0.25f;
+	private const float _CoyoteTime = 0.5f;
 
 	// Information of children
-	private AnimationPlayer Animation;
-	private List<Sprite2D> Sprites = [];
-	private Camera2D Camera;
-	private AudioStreamPlayer2D StepAudio;
-	private AudioStreamPlayer2D JumpAudio;
-	private AudioStreamPlayer2D DashAudio;
+	private AnimationPlayer _AnimationPlayer;
+	private Camera2D _Camera;
+	private readonly Dictionary<string, AudioStreamPlayer2D> _Audio = new();
+	private readonly Dictionary<string, Sprite2D> _Sprites = new();
 
 	// Logic
-	private Boolean ActiveJump = false;
-	private Boolean DoubleJump = true;
-	private Boolean ActivatedDash = false;
-	private float DashTime = 0.25f;
-	private float DashCounter = 0f;
-	private float CoyoteTime = 0.5f;
-	private float CoyoteCounter = 0f;
-	private int AppleCounter = 0;
+	private Vector2 _Velocity = new(0, 0); // Calculated velocity to apply after everything
+	private bool _IsOnFloor = false; // As to not call the function too many times
+	private bool _ActivatedJump = false;
+	private bool _EligibleDoubleJump = true;
+	private bool _ActiveDash = false;
+	private bool _ActivatedDash = false;
+	private bool _PlayAnimationOnce = false;
+	private float _DashTimeLeft = 0f;
+	private float _CoyoteTimeLeft = 0f;
+
+	// =========================================================================
+	// =========================================================================
+	// Functions to set Player up
 
 	public override void _Ready()
 	{
-		Animation = GetNode<AnimationPlayer>("Animation");
-		Sprites.Add(GetNode<Sprite2D>("IdleSprite"));
-		Sprites.Add(GetNode<Sprite2D>("StepSprite"));
-		Sprites.Add(GetNode<Sprite2D>("FallSprite"));
-		Camera = GetNode<Camera2D>("Camera");
-		StepAudio = GetNode<AudioStreamPlayer2D>("Step");
-		JumpAudio = GetNode<AudioStreamPlayer2D>("Jump");
-		DashAudio = GetNode<AudioStreamPlayer2D>("Dash");
+		Godot.Collections.Array<Node> Children = GetChildren();
 
-		Sprites.ForEach(Sprite => Sprite.Visible = false);
+		foreach (Node Child in Children)
+		{
+			if (Child is Camera2D)
+				_Camera = (Camera2D)Child;
+			else if (Child is AnimationPlayer)
+				_AnimationPlayer = (AnimationPlayer)Child;
+			else if (Child is Sprite2D)
+				_Sprites[Child.Name] = (Sprite2D)Child;
+			else if (Child is AudioStreamPlayer2D)
+				_Audio[Child.Name] = (AudioStreamPlayer2D)Child;
+		}
 
-		Camera.MakeCurrent();
-	}
-
-	public override void _Process(double delta)
-	{
-		HandleInput((float)delta);
-		HandleAudio();
-		HandleAnimation();
+		_Camera.MakeCurrent();
 	}
 
 	public override void _PhysicsProcess(double delta)
 	{
-		ApplyGravity((float)delta);
-		MoveCharacter((float)delta);
-		HandleMechanics((float)delta);
+		_IsOnFloor = IsOnFloor();
+		float DeltaF = (float)delta;
+
+		_HandleGravity(DeltaF);
+		_HandleMechanics(DeltaF);
+		_HandlePlayer(DeltaF);
 	}
+
+	public override void _Process(double delta)
+	{
+		float DeltaF = (float)delta;
+
+		_HandleMovement(DeltaF);
+		_HandleVisual(DeltaF);
+		_HandleAudio(DeltaF);
+		_CleanUp(DeltaF);
+	}
+
+	// =========================================================================
+	// =========================================================================
+	// Functions for interacting with Player
 
 	public void OnApplePickUp()
 	{
-		AppleCounter += 1;
-		GD.Print(AppleCounter);
+		GD.Print("You got an apple!");
 	}
 
-	// ================================================================
-	// ======================= Helper Functions =======================
-	// ================================================================
+	// =========================================================================
+	// =========================================================================
+	// Internal logic for Player
 
-	private void ApplyGravity(float delta)
+	private void _HandleGravity(float delta)
 	{
-		if (DashCounter <= 0 || DashCounter == DashTime)
-		{
-			CurrentVelocity.Y += Gravity * delta;
-			CurrentVelocity.Y = Math.Min(FallForce, CurrentVelocity.Y);
-		}
+		// Always apply Gravity except when Player is dashing or grounded
+		if (_ActiveDash || _IsOnFloor)
+			_Velocity.Y = 0;
 		else
-			CurrentVelocity.Y = 0;
+		{
+			_Velocity.Y += _GravitySpeed * delta;
+			_Velocity.Y = Math.Min(_FallSpeed, _Velocity.Y);
+		}
 	}
 
-	private void MoveCharacter(float delta)
+	private void _HandleMechanics(float delta)
 	{
-		Velocity = CurrentVelocity;
+		// Reset all mechanics when Player touches floor
+		if (_IsOnFloor)
+		{
+			_CoyoteTimeLeft = _CoyoteTime;
+			_DashTimeLeft = _DashTime;
+			_EligibleDoubleJump = true;
+		}
+
+		// Count down the moment Player isn't grounded
+		if (!_IsOnFloor)
+			_CoyoteTimeLeft = Math.Max(0, _CoyoteTimeLeft - delta);
+
+		// Count down the moment Player has dashed
+		if (_ActiveDash)
+			_DashTimeLeft = Math.Max(0, _DashTimeLeft - delta);
+
+	}
+
+	private void _HandlePlayer(float delta)
+	{
+		// Move Player after all calculations have been done
+		Velocity = _Velocity;
 		MoveAndSlide();
-
-		if (IsOnFloor() || IsOnCeiling())
-			CurrentVelocity.Y = 0;
 	}
 
-	private void HandleMechanics(float delta)
+	private void _HandleMovement(float delta)
 	{
-		if (IsOnFloor())
+		// When step movement
+		if (Input.IsActionPressed("right") && !_ActiveDash)
+			_Velocity.X = _StepSpeed;
+		else if (Input.IsActionPressed("left") && !_ActiveDash)
+			_Velocity.X = -_StepSpeed;
+		else if (!_ActiveDash)
+			_Velocity.X = 0;
+
+		// When dashing
+		if (Input.IsActionJustPressed("dash") && !_IsOnFloor && !_ActiveDash)
 		{
-			CoyoteCounter = CoyoteTime;
-			DashCounter = DashTime;
-			DoubleJump = true;
-		}
-		else
-			CoyoteCounter = Math.Max(0, CoyoteCounter - delta);
-
-		if (DashCounter < DashTime)
-		{
-			DashCounter -= delta;
-		}
-
-
-	}
-
-	private void HandleInput(float delta)
-	{
-		if (Input.IsActionPressed("right") && (DashCounter <= 0 || DashCounter == DashTime))
-			CurrentVelocity.X = Speed;
-		else if (Input.IsActionPressed("left") && (DashCounter <= 0 || DashCounter == DashTime))
-			CurrentVelocity.X = -Speed;
-		else if (DashCounter <= 0 || DashCounter == DashTime)
-			CurrentVelocity.X = 0;
-
-		if (Input.IsActionPressed("down"))
-			CurrentVelocity.Y = Speed * FallForce;
-
-		if (Input.IsActionJustPressed("dash") && !IsOnFloor() && DashCounter == DashTime)
-		{
-			CurrentVelocity.X = DashForce * (Sprites[0].FlipH ? -1 : 1);
-			ActivatedDash = true;
-			DashCounter -= delta;
+			// Dash was activated and is not eligible anymore
+			_Velocity.X = _DashSpeed * (_Sprites.Values.First().FlipH ? -1 : 1);
+			_ActivatedDash = true;
+			_ActiveDash = false;
 		}
 
-		if (Input.IsActionJustPressed("jump") && (CoyoteCounter > 0f || DoubleJump)
-			&& (DashCounter <= 0 || DashCounter == DashTime))
+		// When (double)jumping
+		if (Input.IsActionJustPressed("jump") && (_CoyoteTimeLeft > 0f || _EligibleDoubleJump))
 		{
-			if (CoyoteCounter > 0f)
-				CoyoteCounter = 0f;
-			else if (DoubleJump)
-				DoubleJump = false;
+			if (_CoyoteTimeLeft > 0f)
+				_CoyoteTimeLeft = 0f;
+			else
+				_EligibleDoubleJump = false;
 
-			ActiveJump = true;
-			CurrentVelocity.Y = JumpForce;
-		}
-
-		// Reset to middle of the screen
-		if (Input.IsKeyPressed(Key.R))
-		{
-			Velocity = new(0, 0);
-			Position = new(0, 0);
+			_ActivatedJump = true;
+			_Velocity.Y = _JumpSpeed;
 		}
 	}
 
-	private void HandleAudio()
+	private void _HandleVisual(float delta)
 	{
-		// Running Audio
-		if (Velocity.X != 0 && IsOnFloor())
-		{
-			if (!StepAudio.Playing)
-				StepAudio.Play();
-		}
-		else
-			StepAudio.Stop();
+		// Flip Sprite to the movement direction
+		if (Input.IsActionPressed("right"))
+			_FlipSpritesLeft(false);
+		else if (Input.IsActionPressed("left"))
+			_FlipSpritesLeft(true);
 
-		// Jumping Audio
-		if (ActiveJump)
+		if (_PlayAnimationOnce)
+			return;
+
+		// When standing still
+		if (_IsOnFloor && Velocity.X == 0)
 		{
-			JumpAudio.Play();
-			ActiveJump = false;
+			_AnimationPlayer.Play("IdleAnimation");
+			_OnlyActiveSprite("IdleSprite");
+			return;
 		}
+
+		// When walking while grounded 
+		if (_IsOnFloor && Velocity.X != 0)
+		{
+			_AnimationPlayer.Play("StepAnimation");
+			_OnlyActiveSprite("StepSprite");
+			return;
+		}
+
+		// When falling
+		if (!_IsOnFloor)
+		{
+			_AnimationPlayer.Play("FallAnimation");
+			_OnlyActiveSprite("FallSprite");
+			_PlayAnimationOnce = true;
+			return;
+		}
+	}
+
+	private void _HandleAudio(float delta)
+	{
+		// When running
+		if (_IsOnFloor && Velocity.X != 0 && !_Audio["StepAudio"].Playing)
+			_PlayAudio("StepAudio");
+
+		// When jumping
+		if (_ActivatedJump)
+			_PlayAudio("JumpAudio");
 
 		// Dash Audio
-		if (ActivatedDash)
-		{
+		if (_ActivatedDash)
+			_PlayAudio("DashAudio");
+	}
 
-			DashAudio.Play();
-			ActivatedDash = false;
+	private void _CleanUp(float delta)
+	{
+		if (_ActivatedJump)
+			_ActivatedJump = false;
+
+		if (_ActivatedDash)
+			_ActivatedDash = false;
+
+		if (_IsOnFloor)
+			_PlayAnimationOnce = false;
+	}
+
+	// =========================================================================
+	// =========================================================================
+	// Helper functions
+
+	private void _PlayAudio(string AudioName)
+	{
+		foreach (AudioStreamPlayer2D Audio in _Audio.Values)
+		{
+			if (Audio.Name == AudioName)
+				Audio.Play();
 		}
 	}
 
-	private Boolean StopAnimation = false;
-
-	private void HandleAnimation()
+	private void _FlipSpritesLeft(bool Flip)
 	{
-		if (Input.IsActionPressed("right"))
-			Sprites.ForEach(Sprite => Sprite.FlipH = false);
-		else if (Input.IsActionPressed("left"))
-			Sprites.ForEach(Sprite => Sprite.FlipH = true);
+		foreach (Sprite2D Sprite in _Sprites.Values)
+			Sprite.FlipH = Flip;
+	}
 
-		if (IsOnFloor())
-			StopAnimation = false;
-
-		if (StopAnimation)
-				return;
-
-		if (IsOnFloor() && Velocity.X == 0)
-		{
-			Animation.Play("idle");
-			Sprites.ForEach(Sprite => Sprite.Visible = Sprite.Name == "IdleSprite");
-		}
-		else if (IsOnFloor() && Velocity.X != 0)
-		{
-			Animation.Play("step");
-			Sprites.ForEach(Sprite => Sprite.Visible = Sprite.Name == "StepSprite");
-		}
-		else if (!IsOnFloor())
-		{
-			Animation.Play("fall");
-			StopAnimation = true;
-			Sprites.ForEach(Sprite => Sprite.Visible = Sprite.Name == "FallSprite");
-		}
+	private void _OnlyActiveSprite(string SpriteName)
+	{
+		foreach (Sprite2D Sprite in _Sprites.Values)
+			Sprite.Visible = Sprite.Name == SpriteName;
 	}
 }
