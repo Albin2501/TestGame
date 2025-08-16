@@ -10,7 +10,7 @@ public partial class Player : CharacterBody2D
 	private float Gravity = 500;
 	private float FallForce = 2000;
 	private float JumpForce = -250;
-	private float DashForce = 250;
+	private float DashForce = 500;
 
 	// Information of children
 	private AnimationPlayer Animation;
@@ -18,15 +18,16 @@ public partial class Player : CharacterBody2D
 	private Camera2D Camera;
 	private AudioStreamPlayer2D StepAudio;
 	private AudioStreamPlayer2D JumpAudio;
+	private AudioStreamPlayer2D DashAudio;
 
 	// Logic
 	private Boolean ActiveJump = false;
 	private Boolean DoubleJump = true;
-	private float DashTime = 1f;
+	private Boolean ActivatedDash = false;
+	private float DashTime = 0.25f;
 	private float DashCounter = 0f;
 	private float CoyoteTime = 0.5f;
 	private float CoyoteCounter = 0f;
-
 	private int AppleCounter = 0;
 
 	public override void _Ready()
@@ -38,6 +39,7 @@ public partial class Player : CharacterBody2D
 		Camera = GetNode<Camera2D>("Camera");
 		StepAudio = GetNode<AudioStreamPlayer2D>("Step");
 		JumpAudio = GetNode<AudioStreamPlayer2D>("Jump");
+		DashAudio = GetNode<AudioStreamPlayer2D>("Dash");
 
 		Sprites.ForEach(Sprite => Sprite.Visible = false);
 
@@ -70,8 +72,13 @@ public partial class Player : CharacterBody2D
 
 	private void ApplyGravity(float delta)
 	{
-		CurrentVelocity.Y += Gravity * delta;
-		CurrentVelocity.Y = Math.Min(FallForce, CurrentVelocity.Y);
+		if (DashCounter <= 0 || DashCounter == DashTime)
+		{
+			CurrentVelocity.Y += Gravity * delta;
+			CurrentVelocity.Y = Math.Min(FallForce, CurrentVelocity.Y);
+		}
+		else
+			CurrentVelocity.Y = 0;
 	}
 
 	private void MoveCharacter(float delta)
@@ -96,31 +103,33 @@ public partial class Player : CharacterBody2D
 
 		if (DashCounter < DashTime)
 		{
-			DashCounter = Math.Max(0, DashCounter - delta);
+			DashCounter -= delta;
 		}
+
+
 	}
 
 	private void HandleInput(float delta)
 	{
-		if (Input.IsActionPressed("right"))
+		if (Input.IsActionPressed("right") && (DashCounter <= 0 || DashCounter == DashTime))
 			CurrentVelocity.X = Speed;
-		else if (Input.IsActionPressed("left"))
+		else if (Input.IsActionPressed("left") && (DashCounter <= 0 || DashCounter == DashTime))
 			CurrentVelocity.X = -Speed;
-		else
-			CurrentVelocity.X = (Math.Abs(CurrentVelocity.X) < 0.1f) ? 0 : CurrentVelocity.X * 0.75f;
+		else if (DashCounter <= 0 || DashCounter == DashTime)
+			CurrentVelocity.X = 0;
 
 		if (Input.IsActionPressed("down"))
 			CurrentVelocity.Y = Speed * FallForce;
 
 		if (Input.IsActionJustPressed("dash") && !IsOnFloor() && DashCounter == DashTime)
 		{
-			// TODO: this doesn't work like I want it to
-			//CurrentVelocity.X += Math.Sign(CurrentVelocity.X) * DashForce;
-			Position = new(Math.Sign(CurrentVelocity.X) * DashForce, Position.Y);
+			CurrentVelocity.X = DashForce * (Sprites[0].FlipH ? -1 : 1);
+			ActivatedDash = true;
 			DashCounter -= delta;
 		}
 
-		if (Input.IsActionJustPressed("jump") && (CoyoteCounter > 0f || DoubleJump))
+		if (Input.IsActionJustPressed("jump") && (CoyoteCounter > 0f || DoubleJump)
+			&& (DashCounter <= 0 || DashCounter == DashTime))
 		{
 			if (CoyoteCounter > 0f)
 				CoyoteCounter = 0f;
@@ -156,10 +165,31 @@ public partial class Player : CharacterBody2D
 			JumpAudio.Play();
 			ActiveJump = false;
 		}
+
+		// Dash Audio
+		if (ActivatedDash)
+		{
+
+			DashAudio.Play();
+			ActivatedDash = false;
+		}
 	}
+
+	private Boolean StopAnimation = false;
 
 	private void HandleAnimation()
 	{
+		if (Input.IsActionPressed("right"))
+			Sprites.ForEach(Sprite => Sprite.FlipH = false);
+		else if (Input.IsActionPressed("left"))
+			Sprites.ForEach(Sprite => Sprite.FlipH = true);
+
+		if (IsOnFloor())
+			StopAnimation = false;
+
+		if (StopAnimation)
+				return;
+
 		if (IsOnFloor() && Velocity.X == 0)
 		{
 			Animation.Play("idle");
@@ -172,14 +202,9 @@ public partial class Player : CharacterBody2D
 		}
 		else if (!IsOnFloor())
 		{
-			// TODO: this animation is still buggy
 			Animation.Play("fall");
+			StopAnimation = true;
 			Sprites.ForEach(Sprite => Sprite.Visible = Sprite.Name == "FallSprite");
 		}
-
-		if (Input.IsActionPressed("right"))
-			Sprites.ForEach(Sprite => Sprite.FlipH = false);
-		else if (Input.IsActionPressed("left"))
-			Sprites.ForEach(Sprite => Sprite.FlipH = true);
 	}
 }
